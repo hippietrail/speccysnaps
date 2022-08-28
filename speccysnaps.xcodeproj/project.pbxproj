@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		540D8DB828B9E0A600133B5D /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 540D8DB728B9E0A600133B5D /* AppKit.framework */; };
 		54F3E0C128B1DC5D00D5AFA0 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F3E0C028B1DC5D00D5AFA0 /* main.swift */; };
 /* End PBXBuildFile section */
 
@@ -23,7 +24,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		54F3E0BD28B1DC5D00D5AFA0 /* speccyrom */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = speccyrom; sourceTree = BUILT_PRODUCTS_DIR; };
+		540D8DB728B9E0A600133B5D /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		54F3E0BD28B1DC5D00D5AFA0 /* speccysnaps */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = speccysnaps; sourceTree = BUILT_PRODUCTS_DIR; };
 		54F3E0C028B1DC5D00D5AFA0 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -32,42 +34,52 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				540D8DB828B9E0A600133B5D /* AppKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		540D8DB628B9E0A600133B5D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				540D8DB728B9E0A600133B5D /* AppKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		54F3E0B428B1DC5D00D5AFA0 = {
 			isa = PBXGroup;
 			children = (
-				54F3E0BF28B1DC5D00D5AFA0 /* speccyrom */,
+				54F3E0BF28B1DC5D00D5AFA0 /* speccysnaps */,
 				54F3E0BE28B1DC5D00D5AFA0 /* Products */,
+				540D8DB628B9E0A600133B5D /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
 		54F3E0BE28B1DC5D00D5AFA0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				54F3E0BD28B1DC5D00D5AFA0 /* speccyrom */,
+				54F3E0BD28B1DC5D00D5AFA0 /* speccysnaps */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		54F3E0BF28B1DC5D00D5AFA0 /* speccyrom */ = {
+		54F3E0BF28B1DC5D00D5AFA0 /* speccysnaps */ = {
 			isa = PBXGroup;
 			children = (
 				54F3E0C028B1DC5D00D5AFA0 /* main.swift */,
 			);
-			path = speccyrom;
+			path = speccysnaps;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		54F3E0BC28B1DC5D00D5AFA0 /* speccyrom */ = {
+		54F3E0BC28B1DC5D00D5AFA0 /* speccysnaps */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 54F3E0C428B1DC5D00D5AFA0 /* Build configuration list for PBXNativeTarget "speccyrom" */;
+			buildConfigurationList = 54F3E0C428B1DC5D00D5AFA0 /* Build configuration list for PBXNativeTarget "speccysnaps" */;
 			buildPhases = (
 				54F3E0B928B1DC5D00D5AFA0 /* Sources */,
 				54F3E0BA28B1DC5D00D5AFA0 /* Frameworks */,
@@ -77,9 +89,9 @@
 			);
 			dependencies = (
 			);
-			name = speccyrom;
-			productName = speccyrom;
-			productReference = 54F3E0BD28B1DC5D00D5AFA0 /* speccyrom */;
+			name = speccysnaps;
+			productName = speccysnaps;
+			productReference = 54F3E0BD28B1DC5D00D5AFA0 /* speccysnaps */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -97,7 +109,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 54F3E0B828B1DC5D00D5AFA0 /* Build configuration list for PBXProject "speccyrom" */;
+			buildConfigurationList = 54F3E0B828B1DC5D00D5AFA0 /* Build configuration list for PBXProject "speccysnaps" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -110,7 +122,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				54F3E0BC28B1DC5D00D5AFA0 /* speccyrom */,
+				54F3E0BC28B1DC5D00D5AFA0 /* speccysnaps */,
 			);
 		};
 /* End PBXProject section */
@@ -243,6 +255,7 @@
 		54F3E0C528B1DC5D00D5AFA0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -252,6 +265,7 @@
 		54F3E0C628B1DC5D00D5AFA0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -261,7 +275,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		54F3E0B828B1DC5D00D5AFA0 /* Build configuration list for PBXProject "speccyrom" */ = {
+		54F3E0B828B1DC5D00D5AFA0 /* Build configuration list for PBXProject "speccysnaps" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				54F3E0C228B1DC5D00D5AFA0 /* Debug */,
@@ -270,7 +284,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		54F3E0C428B1DC5D00D5AFA0 /* Build configuration list for PBXNativeTarget "speccyrom" */ = {
+		54F3E0C428B1DC5D00D5AFA0 /* Build configuration list for PBXNativeTarget "speccysnaps" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				54F3E0C528B1DC5D00D5AFA0 /* Debug */,
