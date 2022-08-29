@@ -20,9 +20,11 @@ let downloadsURL = try fileManager.url(for: .downloadsDirectory,
                                        appropriateFor: nil,
                                        create: false)
 
-let pathURLs = CommandLine.arguments.count == 1 ? [homeUrl]
-                    : CommandLine.arguments.dropFirst().compactMap {
-                        URL(string:$0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") }
+let pathURLs = CommandLine.arguments.count == 1
+    ? [homeUrl]
+    : CommandLine.arguments.dropFirst().compactMap {
+        URL(string: $0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
+    }
 
 for url in pathURLs {
     print("********", url.path, "********")
@@ -44,19 +46,71 @@ for url in pathURLs {
 
             let ext = fileURL.pathExtension.lowercased()
 
-            if !rv.isDirectory! && ["sna", "z80", "zip"].contains(ext) {
+            if !rv.isDirectory! && [
+                //"air",  // ???
+                //"azx",  // ???
+                //"blk",  // tape
+                //"col",    // cartridge?
+                "dck",  // cartridge (Timex)
+                "dsk",  // disk
+                "fdi",  // disk
+                //"hobeta",   // disk
+                "hdf",  // disk
+                "img",  // disk
+                //"itm",  // tape
+                "mdr",  // microdrive
+                "mgt",  // disk
+                //"net",  // ???
+                //"nex",  // snapshot?
+                //"o",    // snapshot?
+                //"p",    // snapshot?
+                //"pal",  // ???
+                "pok",
+                //"rom",    // cartridge (Interface 2)
+                "rzx",
+                //"scl",  // disk
+                "scr",  // screen
+                //"sg",    // cartridge?
+                "slt",  // snapshot
+                "sna",  // snapshot
+                //"sp",   // snapshot?
+                //"spg",  // snapshot?
+                "szx",  // snapshot
+                "tap",  // tape (used for 2 formats, one common and one rare [aka "blk"])
+                "trd",  // disk
+                "tzx",  // tape
+                //"zx",     // snapshot?
+                //"zx82",   // snapshot?
+                //"zxs",  // snapshot
+                "z80",  // snapshot
+                //"zip",  // archive
+                //"zsf",    // snapshot?
+                ].contains(ext)
+            {
                 let size = rv.fileSize ?? -1
-                print(fileURL.relativePath, size)
+                print(fileURL.relativePath)
 
-                if ext == "z80" {
+                if ext == "sna" {
+                    if size == 49179 {
+                        print("  48k")
+                    } else if size == 49280 {
+                        print("  48k (Spectrum +3DOS)")  // so far unverified
+                    } else if size == 131103 {
+                        print("  128k (short)")
+                    } else if size == 147487 {
+                        print("  128k (long)")
+                    } else {
+                        print("  * not a valid snapshot")
+                    }
+                }
+                else if ext == "z80" {
                     if size > 0 && size < 256 * 1024 {
-                        //let foo:Int=fileURL
                         let data = try Data(contentsOf: fileURL)
 
                         if data[6] | data[7] == 0 {
                             let v23len = UInt16(data[30]) + UInt16(data[31])
 
-                            var v = -1
+                            var v: UInt8? = nil
                             if v23len == 23 {
                                 v = 2
                                 print("  version 2")
@@ -72,7 +126,7 @@ for url in pathURLs {
 
                             let hw = data[34], mod = data[37] & 1 << 7
                             print("    hardware mode \(hw), modified? \(mod)")
-                            var hws = "???"
+                            var hws: String? = nil
                             if hw == 0 && mod == 0 {
                                 hws = "48k"
                             } else if hw == 1 && mod == 0 {
@@ -82,9 +136,8 @@ for url in pathURLs {
                             } else if hw == 3 && v == 3 {
                                 hws = "48k + MGT"
                             }
-                            print("      \(hws)")
+                            print("      \(hws ?? "???")")
                         } else {
-                            //print("  version 1")
                             if data[12] & (1 << 5) > 0 {
                                 print("  version 1 compressed")
                             } else {
@@ -92,6 +145,8 @@ for url in pathURLs {
                             }
                         }
                     }
+                } else {
+                    print("  \(size) bytes")
                 }
 
             }
@@ -100,6 +155,10 @@ for url in pathURLs {
         }
     }
 }
+
+exit(0)
+
+// below here is nonworking code attempting to create png thumbnail files
 
 // from emulator
 //var provider: CGDataProvider!
