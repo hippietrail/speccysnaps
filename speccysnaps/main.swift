@@ -47,52 +47,52 @@ for url in pathURLs {
             let ext = fileURL.pathExtension.lowercased()
 
             if !rv.isDirectory! && [
-                //"air",  // ???
-                //"azx",  // ???
-                //"blk",  // tape
+                //"air",    // ???
+                //"azx",    // ???
+                //"blk",    // tape
                 //"col",    // cartridge?
-                //"csw",  // tape
-                "dck",  // cartridge (Timex)
-                //"dsk",  // disk
-                //"fdi",  // disk
-                //"hobeta",   // disk
-                //"hdf",  // disk
-                //"img",  // disk
-                //"itm",  // tape
-                //"ltp",  // tape
-                //"mdr",  // microdrive
-                //"mgt",  // disk
-                //"net",  // ???
-                //"nex",  // snapshot?
-                //"o",    // snapshot?
-                //"p",    // snapshot?
-                //"pal",  // ???
-                "pok",    // poke
-                //"pzx",  // tape
-                "rom",    // cartridge (Interface 2)
+                //"csw",    // tape
+                "dck",      // cartridge (Timex)
+                //"dsk",    // disk
+                //"fdi",    // disk
+                //"hobeta", // disk
+                //"hdf",    // disk
+                //"img",    // disk
+                //"itm",    // tape
+                //"ltp",    // tape
+                //"mdr",    // microdrive
+                //"mgt",    // disk
+                //"net",    // ???
+                //"nex",    // snapshot?
+                //"o",      // snapshot?
+                //"p",      // snapshot?
+                //"pal",    // ???
+                "pok",      // poke
+                //"pzx",    // tape
+                "rom",      // cartridge (Interface 2)
                 //"rzx",
-                //"scl",  // disk
-                "scr",  // screen
-                //"sg",    // cartridge?
-                //"slt",  // snapshot
-                "sna",  // snapshot
-                //"snp",  // snapshot
-                //"sp",   // snapshot?
-                //"spc",  // tape
-                //"spg",  // snapshot?
-                //"sta",  // tape
-                //"szx",  // snapshot
-                "tap",  // tape (used for 2 formats, one common and one rare [aka "blk"])
-                //"trd",  // disk
-                "tzx",  // tape
-                //"udi",  // ???
+                //"scl",    // disk
+                "scr",      // screen
+                //"sg",     // cartridge?
+                //"slt",    // snapshot
+                "sna",      // snapshot
+                //"snp",    // snapshot
+                //"sp",     // snapshot?
+                //"spc",    // tape
+                //"spg",    // snapshot?
+                //"sta",    // tape
+                //"szx",    // snapshot
+                "tap",      // tape (used for 2 formats, one common and one rare [aka "blk"])
+                //"trd",    // disk
+                "tzx",      // tape
+                //"udi",    // ???
                 //"zx",     // snapshot?
                 //"zx82",   // snapshot?
-                //"zxs",  // snapshot
-                "z80",  // snapshot
-                //"zip",  // archive
+                //"zxs",    // snapshot
+                "z80",      // snapshot
+                //"zip",    // archive
                 //"zsf",    // snapshot?
-                //"zxs",  // snapshot
+                //"zxs",    // snapshot
                 ].contains(ext)
             {
                 let size = rv.fileSize ?? -1
@@ -104,8 +104,18 @@ for url in pathURLs {
                         let bankCount1 = (size - 9)/(8 * 1024)
                         print("    size seems valid for a \((size - 9)/1024) kb dock cartridge = \(bankCount1) banks")
                         let data = try Data(contentsOf: fileURL)
+                        
+                        // 0:     DOCK bank (the most frequent variant)
+                        // 1-253: Reserved for expansions which allow more than three 64 Kb banks
+                        // 254:   EXROM bank (using this ID you may insert RAM or ROM chunks into EXROM bank, such
+                        //        hardware units exist on real Timex Sinclair)
+                        // 255:   HOME bank (mainly useless, HOME content is typically stored in a Z80 file); however,
+                        //        using this bank ID you may replace content of Timex HOME ROM, or turn Timex HOME ROM
+                        //        into RAM
+                        
                         let dockID = data.first
                         print("    dock ID \(dockID!)")
+                        
                         let bankValues = ["absent", "blank RAM", "ROM", "set RAM"]
                         var romBankCount = 0
                         for i in 1...8 {
@@ -127,7 +137,63 @@ for url in pathURLs {
                     }
                 }
                 else if ext == "pok" {
-                    print("  TODO \(size) bytes")
+                    let data = try Data(contentsOf: fileURL)
+                    let text = String(decoding: data, as: UTF8.self)
+                    // TODO verify that data was ASCII/UTF-8 text/could be decoded/is not binary data
+                    //print(); print(text); print()
+                    let lines = text.split(whereSeparator: \.isNewline)
+
+                    var i = 0
+                    var setnum = 0
+                    outer: while true {
+                        let line = lines[i]; i += 1
+                        if let setfirst = line.first {
+                            if setfirst == "Y" { break }
+                            else if setfirst == "N" {
+                                let setname = line.dropFirst().trimmingCharacters(in: .whitespaces)
+                                //print("  set \(setnum): \(setname)")
+                                print("  \(setname)")
+
+                                var pokenum = 0
+                                inner: while true {
+                                    let line = lines[i]; i += 1
+                                    if let pokfirst = line.first {
+                                        if pokfirst == "M" || pokfirst == "Z" {
+                                            //print("    poke \(setnum).\(pokenum): \(line.dropFirst())")
+
+                                            let arr = line.dropFirst().split(separator: " ")
+                                            if arr.count == 4 {
+                                                if arr[2] == "256" {
+                                                    print("    bank \(arr[0]): poke \(arr[1]), POPUP (original value: \(arr[3]))")
+                                                } else {
+                                                    print("    bank \(arr[0]): poke \(arr[1]), \(arr[2]) (original value: \(arr[3]))")
+                                                }
+                                            } else {
+                                                print("    * wrong numbber of numbers in poke line")
+                                            }
+
+                                            if pokfirst == "Z" { break }
+                                        } else {
+                                            break outer
+                                        }
+                                    } else {
+                                        print("* foo")
+                                        break outer
+                                    }
+                                    pokenum += 1
+                                }
+                            } else {
+                                print("* bar. setfirst is \(setfirst)")
+                                // only 'N' and 'Y' are possible. anything else means a bug, not a POK file, or a corrupt file
+                                break
+                            }
+                        } else {
+                            print("* baz")
+                            // line with no first letter, something is very wrong
+                            break
+                        }
+                        setnum += 1
+                    }
                 }
                 else if ext == "rom" {
                     if size == 16 * 1024 {
@@ -276,7 +342,7 @@ for url in pathURLs {
                                 case 0x21:
                                     print("    \(hex): group start")
                                     let len = Int(data[o + 1])
-                                    print("      \(String(decoding: data[o + 2 ..< o + 2 + len], as: UTF8.self))")
+                                    print("      \"\(String(decoding: data[o + 2 ..< o + 2 + len], as: UTF8.self))\"")
                                     o += 1 + 1 + len
                                 case 0x22:
                                     print("    \(hex): group end")
@@ -318,9 +384,18 @@ for url in pathURLs {
                                         let tstr = String(decoding: data[to + 2 ..< to + 2 + Int(tlen)], as: UTF8.self)
 
                                         if (desc.isEmpty) {
-                                            print("       \(i): id \(tid) \"\(tstr)\"")
+                                            print("        \(i): id \(tid) \"\(tstr)\"")
                                         } else {
-                                            print("       \(i): \"\(desc)\" \"\(tstr)\"")
+                                            let lines = tstr.split(whereSeparator: \.isNewline)
+                                            if lines.count == 1 {
+                                                print("        \(i): \"\(desc)\" \"\(tstr)\"")
+                                            } else {
+                                                print("        \(i): \"\(desc)\"")
+
+                                                for (i, line) in lines.enumerated() {
+                                                    print("          \(i) \"\(line)\"")
+                                                }
+                                            }
                                         }
                                         
                                         to += 2 + Int(tlen)
@@ -337,7 +412,7 @@ for url in pathURLs {
                                     let idstrings = ["ZX Spectrum 16k", "ZX Spectrum 48k, Plus", "ZX Spectrum 48k ISSUE 1", "ZX Spectrum 128k +(Sinclair)", "ZX Spectrum 128k +2 (grey case)", "ZX Spectrum 128k +2A, +3", "Timex Sinclair TC-2048", "Timex Sinclair TS-2068"]
                                     let infostrings = ["runs but may or may not use speial hardware", "uses the special hardware", "runs but doesn't use the special hardware", "doesn't run"]
                                                                         
-                                    var hwo = o + 1 + 1
+                                    let hwo = o + 1 + 1
                                     for i in 0 ..< len {
                                         let type = data[hwo + i*3]
                                         let id = data[hwo + i*3 + 1]
