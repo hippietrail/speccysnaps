@@ -620,10 +620,16 @@ for url in pathURLs {
                         print("    * 3 bytes from 0x13 are not the expected 0x1a 0x1a 0x00")
                         continue
                     }
+                    let version: UInt16 = data[at:0x16]!
                     let versionMin = data[0x16]
                     let versionMaj = data[0x17]
                     let validation: UInt16 = data[at:0x18]!
                     print("    version \(versionMaj).\(versionMin), validation \(String(format: "%04x", validation))")
+                    guard validation == ~version &+ 0x1234 else {
+                        print("      * validation failed")
+                        continue
+                    }
+                    print("      valid VOC file")
                 }
                 else if ext == "z80" {
                     if size > 0 && size < 256 * 1024 {
