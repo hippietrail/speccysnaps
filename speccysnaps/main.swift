@@ -8,9 +8,35 @@
 import Foundation
 import AppKit
 
+// from https://forums.swift.org/t/how-to-read-uint32-from-a-data/59431/11
+// which had big-endian default which wasn't mentioned for some reason
+extension Data {
+    
+    subscript<T: BinaryInteger>(at offset: Int, bigEndian bigEndian: Bool = false) -> T? {
+        value(ofType: T.self, at: offset, bigEndian: bigEndian)
+    }
+    
+    func value<T: BinaryInteger>(ofType: T.Type, at offset: Int, bigEndian: Bool = false) -> T? {
+        let right = offset &+ MemoryLayout<T>.size
+        guard offset >= 0 && right > offset && right <= count else {
+            return nil
+        }
+        let bytes = self[offset ..< right]
+        if bigEndian {
+            return bytes.reduce(0) { T($0) << 8 + T($1) }
+        } else {
+            return bytes.reversed().reduce(0) { T($0) << 8 + T($1) }
+        }
+    }
+    
+    // Examples:
+    // let value: UInt32 = data[at: 123]!
+    // let value: Int16 = data[at: 123, convertEndian: true]!
+}
+
 let fileManager = FileManager.default
 
-let resKeys : [URLResourceKey] = [.isDirectoryKey, .fileSizeKey]
+let resKeys : [URLResourceKey] = [.isDirectoryKey, .fileSizeKey, .isSymbolicLinkKey]
 
 let homeUrl: URL = fileManager.homeDirectoryForCurrentUser
 //let cwdURL: URL = URL(string: fileManager.currentDirectoryPath)!
@@ -33,72 +59,174 @@ for url in pathURLs {
                                     includingPropertiesForKeys: resKeys,
                                     options: [.skipsHiddenFiles,
                                               .producesRelativePathURLs],
-                                    errorHandler: { (url, error) -> Bool in
+                                    errorHandler: { (url, error) -> Bool in /*print("** error 1: \(url): ", error); */ return true }
+                                    )!
+    
+    enum FiletypeCategory {
+        case archive
+        case audio
+        case cartridge
+        case diskImage
+        case microdriveImage
+        case poke
+        case screen
+        case snapshot
+        case tapeImage
+        case unknnown
+    }
+    
+    struct FiletypeInfo {
+        var ext: String
+        var cat: FiletypeCategory
+    }
+        
+    let fileExtensionInfo: [FiletypeInfo] = [
+        //FiletypeInfo(ext:"air",   // input events?
+        //FiletypeInfo(ext:"azx",   // music/sound? - https://worldofspectrum.net/assets/AZXformat.txt
+        //FiletypeInfo(ext:"blk",   // tape
+        //FiletypeInfo(ext:"col",   // cartridge?
+        FiletypeInfo(ext:"csw",     cat: .audio),       // "Compressed Square Wave"
+        //FiletypeInfo(ext:"dat",     // ???
+        FiletypeInfo(ext:"dck",     cat: .cartridge),   // Timex
+        FiletypeInfo(ext:"dsk",     cat: .diskImage),
+        //FiletypeInfo(ext:"fdi",   //FiletypeInfo(ext: disk
+        FiletypeInfo(ext:"hobeta",  cat: .diskImage),   // Eastern Bloc clones
+        //FiletypeInfo(ext:"hdf",   // hard disk
+        //FiletypeInfo(ext:"img",   // disk
+        //FiletypeInfo(ext:"ipf",   cat: .diskImage),   // used more for Amiga emulators but also Speccy +3
+        //FiletypeInfo(ext:"itm",   // tape
+        //FiletypeInfo(ext:"ltp",   // tape - http://kassiopeia.juls.savba.sk/~garabik/old/readme.txt
+        FiletypeInfo(ext:"mdr",     cat: .microdriveImage),
+        FiletypeInfo(ext:"mgt",     cat: .diskImage),
+        //FiletypeInfo(ext:"net",   // ???
+        //FiletypeInfo(ext:"nex",   // snapshot?
+        //FiletypeInfo(ext:"o",     // snapshot?
+        //FiletypeInfo(ext:"p",     // snapshot?
+        //FiletypeInfo(ext:"pal",   // palette???
+        FiletypeInfo(ext:"pok",     cat: .poke),
+        //FiletypeInfo(ext:"prg",     cat: .snapshot),
+        //FiletypeInfo(ext:"psg",     // ???
+        //FiletypeInfo(ext:"pzx",   // tape
+        //FiletypeInfo(ext:"raw",     // memory dump
+        FiletypeInfo(ext:"rom",     cat: .cartridge),   // Interface 2
+        //FiletypeInfo(ext:"rzx",   // input events!
+        //FiletypeInfo(ext:"scl",   // disk
+        FiletypeInfo(ext:"scr",     cat: .screen),
+        //FiletypeInfo(ext:"sem",   // snapshot
+        //FiletypeInfo(ext:"sg",    // cartridge?
+        //FiletypeInfo(ext:"sit",   cat: .snapshot),
+        FiletypeInfo(ext:"slt",     cat: .snapshot),    // super level loader
+        FiletypeInfo(ext:"sna",     cat: .snapshot),
+        //FiletypeInfo(ext:"snp",   // snapshot
+        //FiletypeInfo(ext:"snx",     cat: .snapshot),
+        //FiletypeInfo(ext:"sp",    // snapshot
+        //FiletypeInfo(ext:"spc",   // tape
+        //FiletypeInfo(ext:"spg",   // snapshot?
+        //FiletypeInfo(ext:"sta",   // tape
+        //FiletypeInfo(ext:"szx",   // snapshot
+        FiletypeInfo(ext:"tap",     cat: .tapeImage),        // (used for 2 formats, one common and one rare [aka "blk"])
+        FiletypeInfo(ext:"trd",     cat: .diskImage),
+        FiletypeInfo(ext:"tzx",     cat: .tapeImage),
+        //FiletypeInfo(ext:"udi",   // ???
+        FiletypeInfo(ext:"voc",     cat: .audio),
+        //FileTypeInfo(ext:"wav",     cat: .audio),         // used by MAME
+        FiletypeInfo(ext:"z80",     cat: .snapshot),
+        FiletypeInfo(ext:"zip",     cat: .archive),
+        //FiletypeInfo(ext:"zsf",   // snapshot?
+        //FiletypeInfo(ext:"zx",      cat: .snapshot),
+        //FiletypeInfo(ext:"zx82",    cat: .snapshot),
+        //FiletypeInfo(ext:"zxs",     cat: .snapshot),
+    ]
+    
+    let speccyFileExtensions = fileExtensionInfo
+        .filter { $0.cat != .archive }
+        // TODO is .csw intended for arbitrary audiotape platforms? would this make it non speccy?
+        .map { $0.ext }
+    
+    let snapshotFileExtensions = fileExtensionInfo
+        //.filter { $0.cat == .snapshot }
+        .map { $0.ext }
+    
+    let examineExtensions = speccyFileExtensions//["z80","tap"]
 
-        print("** error 1: \(url): ", error)
-
-        return true
-    })!
-
-    for case let fileURL as URL in en {
+    mainloop: for case let fileURL as URL in en {
         do {
             let rv = try fileURL.resourceValues(forKeys: Set(resKeys))
 
             let ext = fileURL.pathExtension.lowercased()
 
-            if !rv.isDirectory! && [
-                //"air",    // ???
-                //"azx",    // ???
-                //"blk",    // tape
-                //"col",    // cartridge?
-                //"csw",    // tape
-                "dck",      // cartridge (Timex)
-                //"dsk",    // disk
-                //"fdi",    // disk
-                //"hobeta", // disk
-                //"hdf",    // disk
-                //"img",    // disk
-                //"itm",    // tape
-                //"ltp",    // tape
-                //"mdr",    // microdrive
-                //"mgt",    // disk
-                //"net",    // ???
-                //"nex",    // snapshot?
-                //"o",      // snapshot?
-                //"p",      // snapshot?
-                //"pal",    // ???
-                "pok",      // poke
-                //"pzx",    // tape
-                "rom",      // cartridge (Interface 2)
-                //"rzx",
-                //"scl",    // disk
-                "scr",      // screen
-                //"sg",     // cartridge?
-                //"slt",    // snapshot
-                "sna",      // snapshot
-                //"snp",    // snapshot
-                //"sp",     // snapshot?
-                //"spc",    // tape
-                //"spg",    // snapshot?
-                //"sta",    // tape
-                //"szx",    // snapshot
-                "tap",      // tape (used for 2 formats, one common and one rare [aka "blk"])
-                //"trd",    // disk
-                "tzx",      // tape
-                //"udi",    // ???
-                //"zx",     // snapshot?
-                //"zx82",   // snapshot?
-                //"zxs",    // snapshot
-                "z80",      // snapshot
-                //"zip",    // archive
-                //"zsf",    // snapshot?
-                //"zxs",    // snapshot
-                ].contains(ext)
+            if !rv.isDirectory! && !rv.isSymbolicLink! && examineExtensions.contains(ext)
             {
                 let size = rv.fileSize ?? -1
                 print(fileURL.relativePath)
 
-                if ext == "dck" {
+                if ext == "csw" {
+                    // https://k1.spdns.de/Develop/Projects/zxsp/Info/File%20Formats/csw%20file%20format.html
+                    // https://web.archive.org/web/20171024182530/http://ramsoft.bbk.org.omegahg.com/csw.html
+                    guard size > 0x20 else {
+                        print("  * file too short to hold CSW 1.01 header")
+                        continue
+                    }
+                    /*guard size <= 1024 * 1024 * 2 else {
+                        print("  * file too long. not analyzing")
+                        continue
+                    }*/
+                    
+                    let fh = try FileHandle(forReadingFrom: fileURL)
+                    let data: Data? = try fh.read(upToCount: 0x20)
+                    try fh.close()
+                    
+                    guard let data = data else {
+                        print("  * couldn't read file header")
+                        continue
+                    }
+
+                    let signature = String(decoding: data[0 ..< 22], as: UTF8.self)
+                    
+                    guard signature == "Compressed Square Wave" else {
+                        print("  * not a CSW format file")
+                        continue
+                    }
+                    print("  CSW Compressed Square Wave. length \(size) \(String(format: "x%x", size)))")
+                    // fields common to version 1.01 and version 2.0
+                    let terminatorCode: UInt8 = data[at:0x16]!
+                    let majorRevisionNumber: UInt8 = data[at:0x17]!
+                    let minorRevisionNumber: UInt8 = data[at:0x18]!
+
+                    print("    version \(majorRevisionNumber).\(String(format:"%02d", minorRevisionNumber)), terminator code: \(String(format: "%02x", terminatorCode))")
+                    
+                    guard (majorRevisionNumber == 1 && minorRevisionNumber == 1) || (majorRevisionNumber == 2 && minorRevisionNumber == 0) else {
+                        print("    * invalid version")
+                        continue
+                    }
+                    guard majorRevisionNumber == 1 && minorRevisionNumber == 1 else {
+                        print("    * only version 1.01 supported so far")
+                        continue
+                    }
+                    // fields as used by version 1.01 only
+                    let sampleRate: UInt16 = data[at:0x19]!
+                    let compressionType: UInt8 = data[at:0x1b]!
+                    let flags: UInt8 = data[at:0x1c]!
+                    
+                    let compressionTypeS = compressionType == 1 ? "RLE" : compressionType == 2 ? "Z-RLE" : String(format: "%02x", compressionType)
+                    let flagsS = flags == 0 ? "initial polarity unset, the signal starts at logical low" : flags == 1 ? "initial polarity set, the signal starts at logical high" : String(format: "%02x", flags)
+                    
+                    print("    sample rate: \(sampleRate), compression type: \(compressionTypeS), flags: \(flagsS))")
+                    guard compressionType == 1 || compressionType == 2 else {
+                        print("      * invalid compression type")
+                        continue
+                    }
+                    guard compressionType == 1 || majorRevisionNumber == 2 else {
+                        print("      * Z-RLE is not a valid compression type for version 1 CSW")
+                        continue
+                    }
+                    guard data[0x1d] | data[0x1e] | data[0x1f] == 0 else {
+                        print("    * reserved bytes should all be zero")
+                        continue
+                    }
+                    print("      looks like a valid CSW")
+                }
+                else if ext == "dck" {
                     print("  DCK Timex/Sinclair cartridge image. length \(size) \(String(format: "x%x", size)))")
                     if (size - 9) % 1024 == 0 {
                         let bankCount1 = (size - 9)/(8 * 1024)
@@ -227,31 +355,43 @@ for url in pathURLs {
                     if size > 0 && size < 256 * 1024 {
                         let data = try Data(contentsOf: fileURL)
                         
-                        var o = 0
+                        var offset = 0
                         while true {
-                            //print("o is now \(o) \(String(format:"%x", o))")
-                            if o == data.count { break }
-                            if o > data.count { print("* overrun"); break }
+                            //print("\(String(format:"%06x:", o))")
                             
-                            let blockLen = Int(data[o]) + 256 * Int(data[o+1]) ; o += 2
-                            //print("    block len", blockLen, String(format: "0x%x", blockLen))
-                            if blockLen == 0 { print("* zero block len"); break }
+                            if offset == data.count { break }
+                            if offset > data.count { print("** overrun"); break }
 
-                            let block = data [ o ..< o + blockLen ]
-                            let flag = block.first, checksum = block.last
+                            let blockLen = Int(data[offset]) + 256 * Int(data[offset+1]) ; offset += 2
+                            //print("    block len", blockLen, String(format: "0x%x", blockLen))
                             
+                            if blockLen == 0 {
+                                // TODO some TAP files have runs of all 0 bytes after the actual structured data
+                                // TODO ie TOPMAD.TAP has 0 from 6CEF to 6DFF (110h bytes, 272)
+                                // TODO  NEW_ZEAL.TAP has 0 from 2B702 to 2B7FF (FDh bytes, 253)
+                                print("    * zero block len")
+                                break
+                            }
+                            guard offset + blockLen <= data.count else {
+                                print("    ** not enough data for block (\(offset + blockLen) < \(data.count))")
+                                break
+                            }
+                            
+                            let block = data [ offset ..< offset + blockLen ]
+                            let flag = block.first, checksum = block.last
+
                             if let flag = flag, let checksum = checksum {
                                 
                                 if flag == 0x00 {
-                                    let header = block[o + 1 ..< o + blockLen - 1]
+                                    let header = block[offset + 1 ..< offset + blockLen - 1]
                                     
-                                    print("    header block. \(header.count) bytes. checksum \(checksum)")
+                                    print("    header block. \(header.count) bytes. checksum \(String(format: "x%02x", checksum)) \(checksum)")
                                     
                                     if let type = header.first {
-                                        let name = header[o + 2 ..< o + 2 + 10]
-                                        let dataBlockLen = UInt16(header[o + 2 + 10]) + 256 * UInt16(header[o + 2 + 11])
-                                        let param1 = UInt16(header[o + 2 + 12]) + 256 * UInt16(header[o + 2 + 13])
-                                        let param2 = UInt16(header[o + 2 + 14]) + 256 * UInt16(header[o + 2 + 15])
+                                        let name = header[offset + 2 ..< offset + 2 + 10]
+                                        let dataBlockLen = UInt16(header[offset + 2 + 10]) + 256 * UInt16(header[offset + 2 + 11])
+                                        let param1 = UInt16(header[offset + 2 + 12]) + 256 * UInt16(header[offset + 2 + 13])
+                                        let param2 = UInt16(header[offset + 2 + 14]) + 256 * UInt16(header[offset + 2 + 15])
 
                                         print("      name \"\(String(decoding: name, as: UTF8.self))\"")
                                         print("      data block len: \(dataBlockLen) \(String(format: "x%04x", dataBlockLen))")
@@ -277,16 +417,16 @@ for url in pathURLs {
                                         break
                                     }
                                 } else if flag == 0xff {
-                                    print("    data block. \(blockLen) bytes. checksum \(checksum)")
+                                    print("    data block. \(blockLen) bytes. checksum \(String(format: "x%02x", checksum)) \(checksum)")
                                 } else {
-                                    print("    unknown block. \(blockLen) bytes. checksum \(checksum)")
+                                    print("    unknown block. \(blockLen) bytes. checksum \(String(format: "x%02x", checksum)) \(checksum)")
                                 }
                                 
                             } else {
                                 print("* couldn't unwrap flag or checksum")
                                 break
                             }
-                            o += blockLen
+                            offset += blockLen
                         }
 
                     } else {
@@ -453,6 +593,38 @@ for url in pathURLs {
                         print("  * file too long, not analyzing")
                     }
                 }
+                else if ext == "voc" {
+                    guard size > 0x1a else {
+                        print("  * file too short to hold VOC header")
+                        continue
+                    }
+                    
+                    let fh = try FileHandle(forReadingFrom: fileURL)
+                    let data: Data? = try fh.read(upToCount: 0x1a)
+                    try fh.close()
+                    
+                    guard let data = data else {
+                        print("  * couldn't read file header")
+                        continue
+                    }
+
+                    let signature = String(decoding: data[0 ..< 19], as: UTF8.self)
+                    
+                    guard signature == "Creative Voice File" else {
+                        print("  * not a VOC format file")
+                        continue
+                    }
+                    print("  VOC file. length \(size) \(String(format: "x%x", size)))")
+                    
+                    guard data[0x13] == 0x1a && data[0x14] == 0x1a && data[0x15] == 00 else {
+                        print("    * 3 bytes from 0x13 are not the expected 0x1a 0x1a 0x00")
+                        continue
+                    }
+                    let versionMin = data[0x16]
+                    let versionMaj = data[0x17]
+                    let validation: UInt16 = data[at:0x18]!
+                    print("    version \(versionMaj).\(versionMin), validation \(String(format: "%04x", validation))")
+                }
                 else if ext == "z80" {
                     if size > 0 && size < 256 * 1024 {
                         let data = try Data(contentsOf: fileURL)
@@ -504,6 +676,127 @@ for url in pathURLs {
                     } else {
                         print("  * size bigger than 256k, not analysing")
                     }
+                }
+                else if ext == "zip" {
+                    let endOfCentralDirectoryRecordLength = 22
+                    let endOfCentralDirectoryRecordSignature = 0x06054b50
+                    let centralDirectoryFileHeaderLength = 46
+                    let centralDirectoryFileHeaderSignature           = 0x02014b50
+
+                    guard size > endOfCentralDirectoryRecordLength else {
+                        print("  * file too small to be a real ZIP")
+                        continue
+                    }
+
+                    guard size < 1024 * 1024 * 2 else {
+                        print("  * ZIP file too long. not analyzing. \(size) bytes")
+                        continue
+                    }
+
+                    let data = try Data(contentsOf: fileURL)
+                    var fileEndCommentOffset: Int? = nil
+
+                    // look for a word matching the length to the end of the file
+                    // this is usually the optional comment and its length
+                    for offset in stride(from: size, to: max(endOfCentralDirectoryRecordLength, size - 65536), by: -1) {
+                        let zipCommentLength: UInt16 = data[at: offset-2]!
+                        if zipCommentLength == size - offset {
+                            
+                            // we got a matcing comment length, do we have the signature for the end of the central dir?
+                            let zipesig: UInt32 = data[at: offset-endOfCentralDirectoryRecordLength]!
+                            if zipesig == endOfCentralDirectoryRecordSignature {
+                                fileEndCommentOffset = offset
+                                break
+                            }
+                        }
+                    }
+                    
+                    guard let fileEndCommentOffset = fileEndCommentOffset else {
+                        print("  * not a valid ZIP file")
+                        continue
+                    }
+                    
+                    let endOfCentralDirectoryRecordOffset = fileEndCommentOffset - endOfCentralDirectoryRecordLength
+                
+                    let eocdNumberOfThisDisk: UInt16 = data[at: endOfCentralDirectoryRecordOffset+4]!
+                    let eocdNumberOfDiskWithCentralDirStart: UInt16 = data[at: endOfCentralDirectoryRecordOffset+6]!
+                    let eocdNumberOfCentralDirEntriesThisDisk: UInt16 = data[at: endOfCentralDirectoryRecordOffset+8]!
+                    let eocdNumberOfCentralDirEntriesAllDisks: UInt16 = data[at: endOfCentralDirectoryRecordOffset+10]!
+                    let eocdCentralDirLength: UInt32 = data[at:endOfCentralDirectoryRecordOffset+12]!
+                    let eocdCentralDirOffset: UInt32 = data[at:endOfCentralDirectoryRecordOffset+16]!
+                    
+                    guard eocdNumberOfThisDisk != 0xffff && eocdNumberOfDiskWithCentralDirStart != 0xffff && eocdNumberOfCentralDirEntriesThisDisk != 0xffff && eocdNumberOfCentralDirEntriesAllDisks != 0xffff && eocdCentralDirLength != 0xffffffff && eocdCentralDirOffset != 0xffffffff else {
+                        print("  ** ZIP is Zip64 format, not supported")
+                        continue
+                    }
+
+                    guard eocdNumberOfCentralDirEntriesThisDisk == eocdNumberOfCentralDirEntriesAllDisks else {
+                        print("  ** ZIP is part of a set, not supported")
+                        continue
+                    }
+
+                    var goodFilenames: [String] = []
+
+                    // analyse the central directory
+                    var nextCentralDirOffset: Int = Int(eocdCentralDirOffset)
+                    while true {
+                        let centralDirOffset = nextCentralDirOffset
+                        let sig: UInt32 = data[at:centralDirOffset]!
+                        guard sig == centralDirectoryFileHeaderSignature else {
+                            break
+                        }
+
+                        let cfhBitflag: UInt16 = data[at: centralDirOffset + 8]!
+                        let cfhCompressionMethod: UInt16 = data[at: centralDirOffset + 10]!
+                        //let cfhCompressedSize: UInt32 = data[at: centralDirOffset + 20]!
+                        //let cfhUncompressedSize: UInt32 = data[at: centralDirOffset + 24]!
+                        let cfhFilenameLength: UInt16 = data[at: centralDirOffset + 28]!
+                        let cfhExtraFieldLength: UInt16 = data[at: centralDirOffset + 30]!
+                        let cfhCommentLength: UInt16 = data[at: centralDirOffset + 32]!
+                        
+                        let cfhFilename = String(decoding: data[centralDirOffset+0x2e ..< centralDirOffset+0x2e+Int(cfhFilenameLength)], as: UTF8.self)
+                        let fileURL = URL(fileURLWithPath: cfhFilename)
+
+                        nextCentralDirOffset += centralDirectoryFileHeaderLength + Int(cfhFilenameLength) + Int(cfhExtraFieldLength) + Int(cfhCommentLength)
+                        
+                        guard !cfhFilename.hasSuffix("/") else {
+                            //print("  * ignoring directory \"\(cfhFilename)\"")
+                            continue
+                        }
+                        guard !fileURL.lastPathComponent.hasPrefix("._") else {
+                            //print("  * ignoring macOS file \"\(cfhFilename)\"")
+                            continue
+                        }
+                        guard cfhCompressionMethod == 0x0000 || cfhCompressionMethod == 0x0008 else {
+                            //print("  * ignoring unsupported compression method \(cfhCompressionMethod) \"\(cfhFilename)\"")
+                            continue
+                        }
+                        guard cfhBitflag & 0x0001 == 0 else {
+                            //print("  * ignoring encrypted file \"\(cfhFilename)\"")
+                            continue
+                        }
+                        guard speccyFileExtensions.contains(fileURL.pathExtension.lowercased()) else {
+                            //print("  * ignoring non-Speccy filetype \"\(cfhFilename)\"")
+                            continue
+                        }
+                        guard snapshotFileExtensions.contains(fileURL.pathExtension.lowercased()) else {
+                            //print("  * ignoring non-snapshot filetype \"\(cfhFilename)\"")
+                            continue
+                        }
+
+                        goodFilenames.append(cfhFilename)
+
+                    }
+                    
+                    if goodFilenames.count != 0 {
+                        print("  ZIP with \(goodFilenames.count) Speccy files out of \(eocdNumberOfCentralDirEntriesThisDisk) entries")
+                        for filename in goodFilenames {
+                            print("    \(filename)")
+                        }
+                    } else {
+                        //print("  * ZIP contains no Speccy files out of \(eocdNumberOfCentralDirEntriesThisDisk) entries")
+                    }
+
                 }
                 else {
                     print("  \(size) bytes")
